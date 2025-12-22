@@ -1,16 +1,27 @@
 #include "enc.h"
 
-int aes_op(encryption_t *handle, const unsigned char *data, size_t data_len, unsigned char *output, size_t *output_len){
+int aes_op(encryption_t *handle, const unsigned char *data, size_t data_len, unsigned char *output, size_t *output_len, char increment){
+
+	unsigned char full_iv_buf[IV_BUF_LEN];
 
 	if(*output_len < data_len){
 		return BUFF_ERR;
 	}
-
-	if(handle->aes_handle.set_key(handle->aes_handle.handle, handle->aes_handle.negotiated_key, AES_KEY_SIZE) < 0){
-		return GEN_ERR;
-	}
 	
-	handle->aes_handle.my_iv += 1;
+	if(handle->aes_handle->key_enrolled == 0){
+		if(handle->aes_handle->use_neg_key == 0){
+			if(handle->aes_handle.set_key(handle->aes_handle.handle, handle->aes_handle.negotiated_key, AES_KEY_SIZE) < 0){
+				return GEN_ERR;
+			}
+		} else {
+			if(handle->aes_handle.set_key(handle->aes_handle.handle, handle->aes_handle.negotiated_key, AES_KEY_SIZE) < 0){
+				return GEN_ERR;
+			}
+		}
+		handle->aes_handle->key_enrolled = 1;
+	}
+
+	if(increment == 1) handle->aes_handle.my_iv += 1;
 	memcpy(full_iv_buf, &(handle->aes_handle.my_iv), PARTIAL_IV_BUF_LEN);
 	memcpy(full_iv_buf + 4, &(handle->aes_handle.device_iv), PARTIAL_IV_BUF_LEN);
 	memcpy(full_iv_buf + 8, &(handle->aes_handle.my_iv), PARTIAL_IV_BUF_LEN);
@@ -34,9 +45,7 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 						crc_buf_len = CRC_BUF_LEN,
 						enc_data_buf_len;
 
-	unsigned char		device_partial_iv_buf[PARTIAL_IV_LEN],
-						modem_partial_iv_buf[PARTIAL_IV_LEN],
-						crc_buf[CRC_BUF_LEN],
+	unsigned char		crc_buf[CRC_BUF_LEN],
 						*enc_data_buf;
 
 	const unsigned char	*device_partial_iv_hex = line,
@@ -45,6 +54,14 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 						*enc_data_hex = line + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1 + CRC_HEX_LEN + 1 + sizeof(enc_data_hex_len) + 1;
 
 	uint32_t device_partial_iv, modem_partial_iv;
+	uint32_t my_iv_orig = handle->aes_handle.my_iv, device_iv_orig = handle->aes_handle.device_iv;
+#if sizeof(device_partial_iv) != PARTIAL_IV_BUF_LEN
+	#error "Platform data types len ERR"
+#endif
+	uint16_t crc;
+#if sizeof(crc) != CRC_BUF_LEN
+	#error "Platform data types len ERR"
+#endif
 	unsigned int enc_data_hex_len;
 	int ret;
 
@@ -69,9 +86,9 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 		return INPUT_ERR;
 	}
 
-	memcpy(device_partial_iv_hex, data, PARTIAL_IV_HEX_LEN);
+	/*memcpy(device_partial_iv_hex, data, PARTIAL_IV_HEX_LEN);
 	memcpy(modem_partial_iv_hex, data + PARTIAL_IV_HEX_LEN + 1, PARTIAL_IV_HEX_LEN);
-	memcpy(crc_hex, data + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1, CRC_HEX_LEN);
+	memcpy(crc_hex, data + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1, CRC_HEX_LEN);*/
 	memcpy(&enc_data_hex_len, data + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1, sizeof(enc_data_hex_len));
 	enc_data_hex_len = ntohl(enc_data_hex_len);
 
@@ -86,14 +103,14 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 		return GEN_ERR;
 	}
 
-	if(handle->hex_handle.decode(handle->hex_handle.handle, device_partial_iv_hex, PARTIAL_IV_HEX_LEN, device_partial_iv, &device_partial_iv_len) < 0){
+	if(handle->hex_handle.decode(handle->hex_handle.handle, device_partial_iv_hex, PARTIAL_IV_HEX_LEN, &device_partial_iv, &device_partial_iv_len) < 0){
 		return GEN_ERR;
 	}
 	if(device_partial_iv_len != PARTIAL_IV_BUF_LEN){
 		return GEN_ERR;
 	}
 
-	if(handle->hex_handle.decode(handle->hex_handle.handle, modem_partial_iv_hex, PARTIAL_IV_HEX_LEN, modem_partial_iv, &modem_partial_iv_len) < 0){
+	if(handle->hex_handle.decode(handle->hex_handle.handle, modem_partial_iv_hex, PARTIAL_IV_HEX_LEN, &modem_partial_iv, &modem_partial_iv_len) < 0){
 		return GEN_ERR;
 	}
 	if(modem_partial_iv_len != PARTIAL_IV_BUF_LEN){
@@ -109,9 +126,34 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 		return GEN_ERR;
 	}
 
-	//TODO: both IVs and crc
+	if(device_partial_iv <= handle->aes_handle.device_iv){
+		return IV_ERR;
+	}
+	if(modem_partial_iv != handle->aes_handle.my_iv && modem_partial_iv + 1 != handle->aes_handle.my_iv){
+		return IV_ERR;
+	}
+	if(modem_partial_iv >= (modem_partial_iv + 1)){
+		return IV_ERR;
+	}
 
-	if((ret = aes_op(handle, enc_data_buf, enc_data_buf_len, output, output_len)) != OK){
+	if(handle->crc_handle.calc(handle->crc_handle.handle, enc_data_buf, enc_data_buf_len, &crc) < 0){
+		return GEN_ERR;
+	}
+
+	if(sizeof(crc) != crc_buf_len){
+		return CRC_ERR;
+	}
+	if(memcmp(crc_buf, &crc, sizeof(crc)) != 0){
+		return CRC_ERR;
+	}
+
+	handle->aes_handle.my_iv = modem_partial_iv;
+	handle->aes_handle.device_iv = device_partial_iv_iv;
+
+	if((ret = aes_op(handle, enc_data_buf, enc_data_buf_len, output, output_len, 1)) != OK){
+		//restore IVs if failed, otherwise entire communication will fail
+		handle->aes_handle.my_iv = my_iv_orig;
+		handle->aes_handle.device_iv = device_iv_orig;
 		return ret;
 	}
 

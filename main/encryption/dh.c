@@ -48,8 +48,7 @@ int dhke(encryption_t *handle, const unsigned char *line, size_t line_len){
 	return OK;
 }
 
-int dhke_internal(encryption_t handle, const unsigned char *data, unsigned char *partial_iv, unsigned char *puk, unsigned char *sig_hex){
-
+int dhke_internal(encryption_t *handle, const unsigned char *data, unsigned char *partial_iv, unsigned char *puk, unsigned char *sig_hex){
 
 	size_t crc_buf_len = CRC_BUF_LEN,
 		   iv_len = PARTIAL_IV_BUF_LEN,
@@ -73,13 +72,15 @@ int dhke_internal(encryption_t handle, const unsigned char *data, unsigned char 
 				  my_dh[DH_KEY_LEN],
 				  shared_secret[AES_KEY_LEN],
 				  aes[AES_KEY_LEN],
-				  full_iv_buf[IV_BUF_LEN],
 				  sig[SIGNATURE_LEN],
 				  sig_enc[SIGNATURE_LEN];
 
 
 	uint16_t crc;
 	uint32_t iv;
+	int ret;
+	handle->aes_handle->use_neg_key = 0;
+	handle->aes_handle->key_enrolled = 0;
 
 	memcpy(crc_hex, data, CRC_HEX_LEN);
 	memcpy(iv_hex, data + CRC_HEX_LEN + 1, PARTIAL_IV_HEX_LEN);
@@ -109,7 +110,7 @@ int dhke_internal(encryption_t handle, const unsigned char *data, unsigned char 
 	if(sizeof(crc) != crc_buf_len){
 		return CRC_ERR;
 	}
-	if(memcmp(crc_buf, crc, sizeof(crc)) != 0){
+	if(memcmp(crc_buf, &crc, sizeof(crc)) != 0){
 		return CRC_ERR;
 	}
 
@@ -149,25 +150,12 @@ int dhke_internal(encryption_t handle, const unsigned char *data, unsigned char 
 	srand(time(NULL));
 	handle->aes_handle.my_iv = rand();
 	
-	if(handle->aes_handle.set_key(handle->aes_handle.handle, handle->aes_handle.provisioned_key, AES_KEY_SIZE) < 0){
-		return GEN_ERR;
-	}
-
-	memcpy(full_iv_buf, &(handle->aes_handle.my_iv), PARTIAL_IV_BUF_LEN);
-	memcpy(full_iv_buf + 4, iv_buf, PARTIAL_IV_BUF_LEN);
-	memcpy(full_iv_buf + 8, &(handle->aes_handle.my_iv), PARTIAL_IV_BUF_LEN);
-	memcpy(full_iv_buf + 12, iv_buf, PARTIAL_IV_BUF_LEN);
-
-	if(handle->aes_handle.set_iv(handle->aes_handle.handle, iv_buf, IV_BUF_LEN) < 0){
-		return GEN_ERR;
-	}
-
 	if(handle->sha256_handle.calc(handle->sha256_handle.handle, my_dh + 1, my_dh_len, sig, &sig_len) < 0){
 		return GEN_ERR;
 	}
 
-	if(handle->aes_handle.crypt(handle->aes_handle.handle, sig, sig_len, sig_enc, &sig_enc_len)){
-		return GEN_ERR;
+	if((ret = aes_op(handle, sig, sig_len, sig_enc, &sig_enc_len, 0)) != OK){
+		return ret;
 	}
 	if(sig_enc_len != SIGNATURE_LEN){
 		return GEN_ERR;
@@ -194,6 +182,9 @@ int dhke_internal(encryption_t handle, const unsigned char *data, unsigned char 
 	if(sig_hex_len != SIGNATURE_HEX_LEN){
 		return GEN_ERR;
 	}
+
+	handle->aes_handle->use_neg_key = 1;
+	handle->aes_handle->key_enrolled = 0;
 
 	if(handle->ecdh_handle.fini != NULL && handle->ecdh_handle.fini(handle->ecdh_handle.handle) < 0){
 		return FINI_ERR;

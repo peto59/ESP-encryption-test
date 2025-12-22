@@ -25,23 +25,27 @@
 
 struct AES_256_CTR_handle{
 	void *handle;
+	int (*init)(void *); //may be null
 	int (*set_key)(void *, const unsigned char *, size_t); // buffer is 32 bytes long
 	int (*set_iv)(void *, const unsigned char *, size_t); // buffer is 16 bytes long
 	int (*crypt)(void *, const unsigned char *, size_t, unsigned char *, size_t *);
 	void (*secure_zeroize)(void *, size_t); // may be null, if null SW implementation is used
+	int (*fini)(void *); //may be null
 
 	volatile uint32_t device_iv;
 	volatile uint32_t my_iv;
 
 	volatile unsigned char provisioned_key[AES_KEY_SIZE];
 	volatile unsigned char negotiated_key[AES_KEY_SIZE];
+	char use_neg_key;
+	char key_enrolled;
 }
 
 struct ECDH_P256_handle{
 	void *handle;
 	int (*init)(void *); // may be null
 	int (*get_pubkey)(void *, unsigned char *, size_t *); // buffer is 65 bytes long, expected is X9.63 uncompressed format
-	int (*import_pubkey)(void *, const unsigned char *, size_t) // buffer is 65 bytes of X9.63 uncompressed format
+	int (*import_pubkey)(void *, const unsigned char *, size_t); // buffer is 65 bytes of X9.63 uncompressed format
 	int (*get_key)(void *, unsigned char *, size_t *); // buffer is 32 bytes long key, which is fed to KDF
 	int (*fini)(void *); // may be null
 }

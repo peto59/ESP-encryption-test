@@ -4,6 +4,7 @@
 #define DH_H
 
 #include "types.h"
+#include "enc.h"
 #include <stdlib.h>
 #include <time.h>
 
