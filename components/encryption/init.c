@@ -7,6 +7,9 @@ int init(encryption_t *handle){
 		return 0xffff;
 	}
 
+	handle->aes_handle.use_neg_key = 1;
+	handle->aes_handle.key_enrolled = 0;
+
 	if(handle->aes_handle.set_key == NULL){
 		ret |= (1 >> 0);
 	}

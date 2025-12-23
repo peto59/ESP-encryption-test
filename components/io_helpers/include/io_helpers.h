@@ -8,5 +8,6 @@
 
 ssize_t robust_read(int fd, char *buf, int size);
 ssize_t full_read(int fd, char *buf, int size);
+ssize_t robust_write(void *, const char *, size_t);
 
 #endif

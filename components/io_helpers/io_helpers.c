@@ -51,3 +51,9 @@ ssize_t full_read(int fd, char *buf, int size){
 	}
 	return 0;
 }
+
+ssize_t robust_write(void *handle, const char *c, size_t l){
+	(void) handle;
+	printf("output from library: %s\n", c);
+	return l;
+}
