@@ -2,10 +2,11 @@
 
 #include "mbedtls/cipher.h"
 #include "mbedtls/platform_util.h"
+#include <stddef.h>
 
 struct aes_handle{
 	mbedtls_cipher_context_t ctx;
-}
+};
 
 typedef struct aes_handle aes_handle_t;
 

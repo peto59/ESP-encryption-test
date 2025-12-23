@@ -28,7 +28,7 @@ int ecdh_init(void *handle){
     if (ret != 0) goto ecdh_init_cleanup;
 
     // Load P-256 curve
-    ret = mbedtls_ecdh_setup(&ctx, MBEDTLS_ECP_DP_SECP256R1);
+    ret = mbedtls_ecdh_setup(&(h->ctx), MBEDTLS_ECP_DP_SECP256R1);
     if (ret != 0) goto ecdh_init_cleanup;
 
 	return ret;
@@ -44,22 +44,36 @@ int ecdh_get_pubkey(void *handle, unsigned char *out, size_t *olen){
 
     // Generate our keypair
     ret = mbedtls_ecdh_gen_public(
-        &(h->ctx.grp),
-        &(h->ctx.d),     // private key
-        &(h->ctx.Q),     // public key
+        &(h->ctx.MBEDTLS_PRIVATE(grp)),
+        &(h->ctx.MBEDTLS_PRIVATE(d)),     // private key
+        &(h->ctx.MBEDTLS_PRIVATE(Q)),     // public key
         mbedtls_ctr_drbg_random,
         &(h->ctr_drbg)
     );
+	/*ret = mbedtls_ecdh_gen_public(
+		&(h->ctx),
+		mbedtls_ctr_drbg_random,
+		&(h->ctr_drbg)
+	);*/
     if (ret != 0) goto ecdh_get_pubkey_cleanup;
 
 	ret = mbedtls_ecp_point_write_binary(
-        &(h->ctx.grp),
-        &(h->ctx.Q),
+        &(h->ctx.MBEDTLS_PRIVATE(grp)),
+        &(h->ctx.MBEDTLS_PRIVATE(Q)),
         MBEDTLS_ECP_PF_UNCOMPRESSED,
         olen,
         out,
         *olen
     );
+	/*ret = mbedtls_ecdh_make_public(
+		&(h->ctx),
+		&(h->pubkey_len),
+		out,
+		*olen,
+		mbedtls_ctr_drbg_random,
+		&(h->ctr_drbg)
+	);*/
+	*olen = 65;
     if (ret != 0) goto ecdh_get_pubkey_cleanup;
 
 	return ret;
@@ -75,11 +89,16 @@ int ecdh_import_pubkey(void *handle, const unsigned char *in, size_t ilen){
 
     // Read peer public key (uncompressed form: 0x04 || X || Y)
     ret = mbedtls_ecp_point_read_binary(
-        &(h->ctx.grp),
-        &(h->ctx.Qp),
+        &(h->ctx.MBEDTLS_PRIVATE(grp)),
+        &(h->ctx.MBEDTLS_PRIVATE(Qp)),
         in,
         ilen
     );
+	/*ret = mbedtls_ecdh_read_public(
+		&(h->ctx),
+		in,
+		ilen
+	);*/
     if (ret != 0) goto ecdh_import_pubkey_cleanup;
 	return ret;
 
@@ -94,24 +113,32 @@ int ecdh_get_key(void *handle, unsigned char *out, size_t *olen){
 
     // Compute shared secret
     ret = mbedtls_ecdh_compute_shared(
-        &(h->ctx.grp),
-		&(h->ctx.z),
-        &(h->ctx.Qp),
-        &(h->ctx.d),
+        &(h->ctx.MBEDTLS_PRIVATE(grp)),
+		&(h->ctx.MBEDTLS_PRIVATE(z)),
+        &(h->ctx.MBEDTLS_PRIVATE(Qp)),
+        &(h->ctx.MBEDTLS_PRIVATE(d)),
         mbedtls_ctr_drbg_random,
         &(h->ctr_drbg)
     );
+	/*ret = mbedtls_ecdh_calc_secret(
+		&(h->ctx),
+		olen,
+		out,
+		sizeof(shared_secret),
+		mbedtls_ctr_drbg_random,
+		&ctr_drbg
+	);*/
     if (ret != 0) goto ecdh_get_key_cleanup;
 
     // Export shared secret
     ret = mbedtls_mpi_write_binary(
-        &(h->ctx.z),
+        &(h->ctx.MBEDTLS_PRIVATE(z)),
         out,
         *olen
     );
     if (ret != 0) goto ecdh_get_key_cleanup;
 
-    *olen = mbedtls_mpi_size(&(h->ctx.z));
+    *olen = mbedtls_mpi_size(&(h->ctx.MBEDTLS_PRIVATE(z)));
 	return ret;
 
 ecdh_get_key_cleanup:

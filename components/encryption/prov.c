@@ -3,6 +3,8 @@
 
 // TODO: refactor
 
+int prov_internal(encryption_t *handle, const unsigned char *data, unsigned char *key, size_t *key_len);
+
 int prov
 	(
 		encryption_t *handle,
@@ -55,51 +57,46 @@ int prov
 int prov_internal(encryption_t *handle, const unsigned char *data, unsigned char *key, size_t *key_len){
 
 	size_t crc_buf_len = CRC_BUF_LEN,
-		   aes_len = AES_KEY_LEN;
+		   aes_len = AES_KEY_SIZE;
 
-	// TODO: USELESS PARSE LINE DIRECTLY!
-	unsigned char crc_hex[CRC_HEX_LEN],
-				  crc_buf[CRC_BUF_LEN],
-				  aes_hex[AES_HEX_LEN],
-				  aes[AES_KEY_LEN];
+	const unsigned char *crc_hex = data,
+						*aes_hex = data + CRC_HEX_LEN + 1;
+
+	unsigned char crc_buf[CRC_BUF_LEN],
+				  aes[AES_KEY_SIZE];
 
 	uint16_t crc;
 
-	memcpy(crc_hex, data, CRC_HEX_LEN);
 	if(handle->hex_handle.decode(handle->hex_handle.handle, crc_hex, CRC_HEX_LEN, crc_buf, &crc_buf_len) < 0){
 		return GEN_ERR;
 	}
 
-	memcpy(aes_hex, data + CRC_HEX_LEN + 1, AES_HEX_LEN);
 	if(handle->hex_handle.decode(handle->hex_handle.handle, aes_hex, AES_HEX_LEN, aes, &aes_len) < 0){
-		handle->aes_handle.secure_zeroize(aes_hex, AES_HEX_LEN);
 		return GEN_ERR;
 	}
 
-	handle->aes_handle.secure_zeroize(aes_hex, AES_HEX_LEN);
-
 	if(handle->crc_handle.calc(handle->crc_handle.handle, aes, aes_len, &crc) < 0){
-		handle->aes_handle.secure_zeroize(aes, AES_KEY_LEN);
+		handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
 		return GEN_ERR;
 	}
 
 	if(sizeof(crc) != crc_buf_len){
-		handle->aes_handle.secure_zeroize(aes, AES_KEY_LEN);
+		handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
 		return CRC_ERR;
 	}
 	if(memcmp(crc_buf, &crc, sizeof(crc)) != 0){
-		handle->aes_handle.secure_zeroize(aes, AES_KEY_LEN);
+		handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
 		return CRC_ERR;
 	}
 
 	if(aes_len > *key_len){
-		handle->aes_handle.secure_zeroize(aes, AES_KEY_LEN);
+		handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
 		return BUFF_ERR;
 	}
 
 	*key_len = aes_len;
 	memcpy(key, aes, aes_len);
 	memcpy(handle->aes_handle.provisioned_key, aes, aes_len);
-	handle->aes_handle.secure_zeroize(aes, AES_KEY_LEN);
+	handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
 	return OK;
 }

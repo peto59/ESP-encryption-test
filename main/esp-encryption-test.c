@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
-#include "io_helpers/include/io_helpers.h"
+//#include "../components/io_helpers/include/io_helpers.h"
+//#include "../components/mbedtls_abstraction/mbedtls_abstraction"
+//#include "../components/encryption/encryption.h"
+#include "io_helpers.h"
 
 void app_main(void) {
 

@@ -3,16 +3,15 @@
 
 int aes_fini(void *handle){
 	aes_handle_t *h = (aes_handle_t *)handle;
-	mbedtls_cipher_free(&ctx);
+	mbedtls_cipher_free(&(h->ctx));
 	return 0;
 }
 
 int aes_init(void *handle){
 	aes_handle_t *h = (aes_handle_t *)handle;
 	int ret = -1;
-    mbedtls_cipher_info_t *cipher_info;
-
-	cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CTR);
+	
+    const mbedtls_cipher_info_t *cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CTR);
     if (!cipher_info) return -1;
 
 	mbedtls_cipher_init(&(h->ctx));
@@ -35,7 +34,7 @@ int aes_set_key(void *handle, const unsigned char *key, size_t klen){
 	ret = mbedtls_cipher_setkey(
         &(h->ctx),
         key,
-        key_len * 8,
+        klen * 8,
         MBEDTLS_ENCRYPT   // same for decrypt
     );
     if (ret != 0) goto aes_set_key_cleanup;
@@ -52,7 +51,7 @@ int aes_set_iv(void *handle, const unsigned char *iv, size_t ivlen){
 	if(ivlen != 16) goto aes_set_iv_cleanup;
 
 	ret = mbedtls_cipher_set_iv(
-        &ctx,
+        &(h->ctx),
         iv,
         16
     );

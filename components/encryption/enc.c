@@ -8,8 +8,8 @@ int aes_op(encryption_t *handle, const unsigned char *data, size_t data_len, uns
 		return BUFF_ERR;
 	}
 	
-	if(handle->aes_handle->key_enrolled == 0){
-		if(handle->aes_handle->use_neg_key == 0){
+	if(handle->aes_handle.key_enrolled == 0){
+		if(handle->aes_handle.use_neg_key == 0){
 			if(handle->aes_handle.set_key(handle->aes_handle.handle, handle->aes_handle.negotiated_key, AES_KEY_SIZE) < 0){
 				return GEN_ERR;
 			}
@@ -18,7 +18,7 @@ int aes_op(encryption_t *handle, const unsigned char *data, size_t data_len, uns
 				return GEN_ERR;
 			}
 		}
-		handle->aes_handle->key_enrolled = 1;
+		handle->aes_handle.key_enrolled = 1;
 	}
 
 	if(increment == 1) handle->aes_handle.my_iv += 1;
@@ -31,7 +31,7 @@ int aes_op(encryption_t *handle, const unsigned char *data, size_t data_len, uns
 		return GEN_ERR;
 	}
 
-	if(handle->aes_handle.crypt(handle->aes_handle.handle, output, output_len) < 0){
+	if(handle->aes_handle.crypt(handle->aes_handle.handle, data, data_len, output, output_len) < 0){
 		return GEN_ERR;
 	}
 	return OK;
@@ -51,17 +51,13 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 	const unsigned char	*device_partial_iv_hex = line,
 						*modem_partial_iv_hex = line + PARTIAL_IV_HEX_LEN + 1,
 						*crc_hex = line + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1,
-						*enc_data_hex = line + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1 + CRC_HEX_LEN + 1 + sizeof(enc_data_hex_len) + 1;
+						*enc_data_hex = line + PARTIAL_IV_HEX_LEN + 1 + PARTIAL_IV_HEX_LEN + 1 + CRC_HEX_LEN + 1 + sizeof(unsigned int) + 1;
 
 	uint32_t device_partial_iv, modem_partial_iv;
 	uint32_t my_iv_orig = handle->aes_handle.my_iv, device_iv_orig = handle->aes_handle.device_iv;
-#if sizeof(device_partial_iv) != PARTIAL_IV_BUF_LEN
-	#error "Platform data types len ERR"
-#endif
+_Static_assert(sizeof(device_partial_iv) == PARTIAL_IV_BUF_LEN, "Platform data types len ERR");
 	uint16_t crc;
-#if sizeof(crc) != CRC_BUF_LEN
-	#error "Platform data types len ERR"
-#endif
+_Static_assert(sizeof(crc) == CRC_BUF_LEN, "Platform data types len ERR");
 	unsigned int enc_data_hex_len;
 	int ret;
 
@@ -103,14 +99,14 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 		return GEN_ERR;
 	}
 
-	if(handle->hex_handle.decode(handle->hex_handle.handle, device_partial_iv_hex, PARTIAL_IV_HEX_LEN, &device_partial_iv, &device_partial_iv_len) < 0){
+	if(handle->hex_handle.decode(handle->hex_handle.handle, device_partial_iv_hex, PARTIAL_IV_HEX_LEN, (unsigned char *)(&device_partial_iv), &device_partial_iv_len) < 0){
 		return GEN_ERR;
 	}
 	if(device_partial_iv_len != PARTIAL_IV_BUF_LEN){
 		return GEN_ERR;
 	}
 
-	if(handle->hex_handle.decode(handle->hex_handle.handle, modem_partial_iv_hex, PARTIAL_IV_HEX_LEN, &modem_partial_iv, &modem_partial_iv_len) < 0){
+	if(handle->hex_handle.decode(handle->hex_handle.handle, modem_partial_iv_hex, PARTIAL_IV_HEX_LEN, (unsigned char *)(&modem_partial_iv), &modem_partial_iv_len) < 0){
 		return GEN_ERR;
 	}
 	if(modem_partial_iv_len != PARTIAL_IV_BUF_LEN){
@@ -148,7 +144,7 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 	}
 
 	handle->aes_handle.my_iv = modem_partial_iv;
-	handle->aes_handle.device_iv = device_partial_iv_iv;
+	handle->aes_handle.device_iv = device_partial_iv;
 
 	if((ret = aes_op(handle, enc_data_buf, enc_data_buf_len, output, output_len, 1)) != OK){
 		//restore IVs if failed, otherwise entire communication will fail
@@ -169,6 +165,9 @@ int dec(encryption_t *handle, const unsigned char *line, size_t line_len, unsign
 }
 
 int enc_buf(encryption_t *handle, const unsigned char *line, size_t line_len, unsigned char *output, size_t *output_len){
+	*output_len = line_len;
+	memset(output, 0, *output_len);
+	return 0;
 }
 
 int enc(encryption_t *handle, const unsigned char *line, size_t line_len){
@@ -180,7 +179,7 @@ int enc(encryption_t *handle, const unsigned char *line, size_t line_len){
 		return ret;
 	}
 
-	if(handle->comm_handle.write(handle->comm_handle.handle, encrypted, line_len) < 0){
+	if(handle->comm_handle.write(handle->comm_handle.handle, (char *)encrypted, line_len) < 0){
 		return COMM_ERR;
 	}
 	return OK;

@@ -7,5 +7,5 @@ int sha256_calc(void *handle, const unsigned char *input, size_t ilen, unsigned 
 	}
 	*olen = 32;
 
-	return mbedtls_sha256_ret(input, ilen, output, 0);
+	return mbedtls_sha256(input, ilen, output, 0);
 }

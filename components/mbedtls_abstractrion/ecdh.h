@@ -1,15 +1,22 @@
 #pragma once
 
+#define MBEDTLS_ECDH_LEGACY_CONTEXT
+
+
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
-#include "mbedtls/ecp.h"
+#include <mbedtls/error.h>
+#include <mbedtls/pk.h>
+//#include "mbedtls/ecp.h"
+#include <stddef.h>
+#include <string.h>
 
 struct ecdh_handle{
     mbedtls_ecdh_context ctx;
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
-}
+};
 
 typedef struct ecdh_handle ecdh_handle_t;
 

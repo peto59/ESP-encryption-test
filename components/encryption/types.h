@@ -3,6 +3,8 @@
 #define ENCRYPTION_TYPES_H
 
 #include <stdint.h>
+#include <stddef.h>
+#include <sys/types.h>
 
 #define AES_HEX_LEN 64
 #define AES_KEY_SIZE 32
@@ -39,7 +41,7 @@ struct AES_256_CTR_handle{
 	volatile unsigned char negotiated_key[AES_KEY_SIZE];
 	char use_neg_key;
 	char key_enrolled;
-}
+};
 
 struct ECDH_P256_handle{
 	void *handle;
@@ -48,33 +50,33 @@ struct ECDH_P256_handle{
 	int (*import_pubkey)(void *, const unsigned char *, size_t); // buffer is 65 bytes of X9.63 uncompressed format
 	int (*get_key)(void *, unsigned char *, size_t *); // buffer is 32 bytes long key, which is fed to KDF
 	int (*fini)(void *); // may be null
-}
+};
 
 struct HKDF_handle{
 	void *handle;
 	int (*transform)(void *, const unsigned char *, size_t, unsigned char *, size_t *); // both buffers are 32 bytes long
-}
+};
 
 struct comm_handle{
 	void *handle;
-	size_t (*write)(void *, const unsigned char *, size_t);
-}
+	ssize_t (*write)(void *, const char *, size_t);
+};
 
 struct SHA256_handle{
 	void *handle;
 	int (*calc)(void *, const unsigned char *, size_t, unsigned char *, size_t *);
-}
+};
 
 struct CRC16_handle{
 	void *handle;
 	int (*calc)(void *, const unsigned char *, size_t, uint16_t *); // may be null, if null SW implementation is used
-}
+};
 
 struct HEX_handle{
 	void *handle;
 	int (*encode)(void *, const unsigned char *, size_t, unsigned char *, size_t *); // may be null, if null SW implementation is used
 	int (*decode)(void *, const unsigned char *, size_t, unsigned char *, size_t *); // may be null, if null SW implementation is used
-}
+};
 
 typedef struct AES_256_CTR_handle AES_256_CTR_handle_t;
 typedef struct ECDH_P256_handle ECDH_P256_handle_t;
@@ -92,7 +94,7 @@ struct encryption{
 	SHA256_handle_t sha256_handle;
 	CRC16_handle_t crc_handle;
 	HEX_handle_t hex_handle;
-}
+};
 
 typedef struct encryption encryption_t;
 
@@ -113,6 +115,6 @@ enum {
 	COMM_FINI_ERR = 5,
 
 	IV_ERR = 6,
-}
+};
 
 #endif
