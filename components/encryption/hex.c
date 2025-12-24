@@ -1,10 +1,12 @@
 #ifdef USE_HEX_SW
 
+#include "hex.h"
+
 char encode_internal(const char in){
 	if(in < 10){
 		return in + 48;
 	}
-	return in + 65;
+	return in + 65 - 10;
 }
 
 int hex_encode(void *handle, const unsigned char *input, size_t ilen, unsigned char *output, size_t *olen){
@@ -39,15 +41,20 @@ int decode_internal(const char in, char *out){
 	if(in > 59 && in < 65){
 		return -1;
 	}
-	if(in > 70){
+	if(in > 70 && in < 97){
 		return -1;
 	}
+    if(in > 102){
+        return -1;
+    }
 
 	if(in < 65){
 		*out = in - 48;
+	} else if (in < 97) {
+		*out = in - 65 + 10;
 	} else {
-		*out = in - 65;
-	}
+        *out = in - 97 + 10;
+    }
 	return 0;
 }
 

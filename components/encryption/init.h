@@ -12,6 +12,6 @@
  *	  0: sucess
  *	  otherwise: error
  */
-int init(encryption_t *handle);
+int enc_init(encryption_t *handle);
 
 #endif

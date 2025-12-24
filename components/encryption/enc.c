@@ -7,6 +7,15 @@ int aes_op(encryption_t *handle, const unsigned char *data, size_t data_len, uns
 	if(*output_len < data_len){
 		return BUFF_ERR;
 	}
+
+    if(handle->aes_handle.is_aes_init == 0){
+        if(handle->aes_handle.init != NULL){
+            if(handle->aes_handle.init(handle->aes_handle.handle) < 0){
+                return GEN_ERR;
+            }
+        }
+        handle->aes_handle.is_aes_init = 1;
+    }
 	
 	if(handle->aes_handle.key_enrolled == 0){
 		if(handle->aes_handle.use_neg_key == 0){

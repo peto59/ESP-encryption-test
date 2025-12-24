@@ -4,6 +4,9 @@
 
 #include "types.h"
 #include <string.h>
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
 
 /*

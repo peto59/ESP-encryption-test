@@ -82,10 +82,16 @@ int prov_internal(encryption_t *handle, const unsigned char *data, unsigned char
 
 	if(sizeof(crc) != crc_buf_len){
 		handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
+        #ifdef DEBUG
+        printf("len does not match in crc");
+        #endif // ifdef DEBUG
 		return CRC_ERR;
 	}
 	if(memcmp(crc_buf, &crc, sizeof(crc)) != 0){
 		handle->aes_handle.secure_zeroize(aes, AES_KEY_SIZE);
+        #ifdef DEBUG
+        printf("crc does not match, %i", crc);
+        #endif // ifdef DEBUG
 		return CRC_ERR;
 	}
 

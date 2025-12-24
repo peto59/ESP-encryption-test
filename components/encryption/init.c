@@ -1,6 +1,6 @@
 #include "init.h"
 
-int init(encryption_t *handle){
+int enc_init(encryption_t *handle){
 	int ret = 0;
 
 	if(handle == NULL){
@@ -9,6 +9,7 @@ int init(encryption_t *handle){
 
 	handle->aes_handle.use_neg_key = 1;
 	handle->aes_handle.key_enrolled = 0;
+	handle->aes_handle.is_aes_init = 0;
 
 	if(handle->aes_handle.set_key == NULL){
 		ret |= (1 >> 0);
@@ -60,15 +61,16 @@ int init(encryption_t *handle){
 
 	if(handle->hex_handle.encode == NULL){
 #ifdef USE_HEX_SW
-		handle->crc_handle.encode = &hex_encode;
+		handle->hex_handle.encode = &hex_encode;
 #else
 		ret |= (1 >> 11);
 #endif
 	}
 	if(handle->hex_handle.decode == NULL){
 #ifdef USE_HEX_SW
-		handle->crc_handle.decode = &hex_decode;
+		handle->hex_handle.decode = &hex_decode;
 #else
+        #error "you stupid?"
 		ret |= (1 >> 12);
 #endif
 	}

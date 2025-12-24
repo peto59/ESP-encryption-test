@@ -55,7 +55,10 @@ int ecdh_get_pubkey(void *handle, unsigned char *out, size_t *olen){
 		mbedtls_ctr_drbg_random,
 		&(h->ctr_drbg)
 	);*/
-    if (ret != 0) goto ecdh_get_pubkey_cleanup;
+    if (ret != 0){
+        ret = -200;
+        goto ecdh_get_pubkey_cleanup;
+    }
 
 	ret = mbedtls_ecp_point_write_binary(
         &(h->ctx.MBEDTLS_PRIVATE(grp)),
@@ -73,8 +76,22 @@ int ecdh_get_pubkey(void *handle, unsigned char *out, size_t *olen){
 		mbedtls_ctr_drbg_random,
 		&(h->ctr_drbg)
 	);*/
+    if(*olen != 65){
+        ret = -100;
+        goto ecdh_get_pubkey_cleanup;
+    }
 	*olen = 65;
-    if (ret != 0) goto ecdh_get_pubkey_cleanup;
+    if (ret != 0){
+        if(ret == MBEDTLS_ERR_ECP_BUFFER_TOO_SMALL)
+        {
+            ret = -300;
+        } else if(ret == MBEDTLS_ERR_ECP_FEATURE_UNAVAILABLE){
+            ret = -400;
+        } else {
+            ret = -500;
+        }
+        goto ecdh_get_pubkey_cleanup;
+    }
 
 	return ret;
 

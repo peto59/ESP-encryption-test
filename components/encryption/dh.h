@@ -7,6 +7,9 @@
 #include "enc.h"
 #include <stdlib.h>
 #include <time.h>
+#ifdef DEBUG
+#include <stdio.h>
+#endif // ifdef DEBUG
 
 /*
  * ret: 

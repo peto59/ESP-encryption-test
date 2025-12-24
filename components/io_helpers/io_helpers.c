@@ -38,22 +38,36 @@ ssize_t robust_read(int fd, char *buf, int size){
 }
 
 ssize_t full_read(int fd, char *buf, int size){
-	while(size > 0){
-		ssize_t rd_cnt = robust_read(fd, buf, size);
+	//almost busy wait
+	int real_size = 0;
+	ssize_t rd_cnt;
+	while(real_size < size){
+		rd_cnt = read(fd, buf, size - real_size);
+#ifdef DEBUG
+		printf("real_size %d\n", real_size);
+		printf("read %d \n", rd_cnt);
+		printf("err %s \n", strerror(errno));
+		printf("errno %d \n", errno);
+#endif
 		if(rd_cnt < 0){
-			return -1;
+			if(errno == EAGAIN){
+				sleep(1);
+				continue;
+			}
+			return real_size;
 		}
-		if(rd_cnt == size){
-			return 0;
-		}
+
+		real_size += rd_cnt;
 		buf += rd_cnt;
-		size -= rd_cnt;
 	}
-	return 0;
+    return size;
 }
 
 ssize_t robust_write(void *handle, const char *c, size_t l){
 	(void) handle;
-	printf("output from library: %s\n", c);
+    char b[l + 1];
+    memcpy(b, c, l);
+    b[l] = '\0';
+	printf("output from library: %s\n", b);
 	return l;
 }

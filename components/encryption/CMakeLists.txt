@@ -11,3 +11,7 @@ idf_component_register(
 		"prov.c"
 	INCLUDE_DIRS "."
 )
+
+# Define a macro for all files in this component
+target_compile_definitions(${COMPONENT_LIB} PRIVATE USE_HEX_SW=1)
+target_compile_definitions(${COMPONENT_LIB} PRIVATE DEBUG=1)

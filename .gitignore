@@ -55,3 +55,6 @@ dkms.conf
 *.dwo
 
 build/*
+core_dump.txt
+core_dump_raw.txt
+monitor.log

@@ -41,6 +41,7 @@ struct AES_256_CTR_handle{
 	volatile unsigned char negotiated_key[AES_KEY_SIZE];
 	char use_neg_key;
 	char key_enrolled;
+    char is_aes_init;
 };
 
 struct ECDH_P256_handle{
